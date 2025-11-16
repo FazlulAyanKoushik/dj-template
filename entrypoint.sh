@@ -18,16 +18,17 @@ else
     echo "Using SQLite. Skipping database availability check."
 fi
 
-# Run migrations and collect static files
+# Run migrations
 echo "Running database migrations..."
 python manage.py migrate --noinput
 
 # Seed initial users
 echo "Seeding initial users..."
-python manage.py seed_users
+python manage.py seed_users || echo "User seeding skipped (user may already exist)"
 
+# Collect static files
 echo "Collecting static files..."
-python manage.py collectstatic --noinput
+python manage.py collectstatic --noinput --clear || echo "Static files collection failed, continuing..."
 
 # Run the main container command (e.g., gunicorn / daphne / runserver)
 exec "$@"

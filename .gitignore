@@ -66,3 +66,9 @@ celerybeat.pid
 
 # UV
 uv.lock
+
+/core/staticfiles/
+/core/media/
+/core/celerybeat-schedule-shm
+/core/celerybeat-schedule-wal
+

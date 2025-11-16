@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   db:
     image: postgres:15-alpine
@@ -34,23 +32,30 @@ services:
   web:
     build: .
     container_name: dj_template_web
-    command: gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers 4
+    command: gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers ${GUNICORN_WORKERS:-4}
     volumes:
       - ./core:/app/core
       - ./entrypoint.sh:/app/entrypoint.sh
-      - static_volume:/app/staticfiles
-      - media_volume:/app/media
+      - static_volume:/app/core/staticfiles
+      - media_volume:/app/core/media
     ports:
-      - "8000:8000"
+      - "${PORT:-8000}:8000"
     env_file:
       - .env
     environment:
       - DATABASE_TYPE=${DATABASE_TYPE:-postgres}
       - DB_HOST=db
       - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-postgres}
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - REDIS_URL=redis://redis:6379/0
+      - DJANGO_ENV=${DJANGO_ENV:-local}
+      - SECRET_KEY=${SECRET_KEY}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:8000}
     depends_on:
       db:
         condition: service_healthy
@@ -61,7 +66,7 @@ services:
   celery_worker:
     build: .
     container_name: dj_template_celery_worker
-    command: sh -c "cd /app/core && celery -A core worker --loglevel=info"
+    command: sh -c "cd /app/core && celery -A core worker --loglevel=${CELERY_LOG_LEVEL:-info}"
     volumes:
       - ./core:/app/core
     env_file:
@@ -70,19 +75,27 @@ services:
       - DATABASE_TYPE=${DATABASE_TYPE:-postgres}
       - DB_HOST=db
       - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-postgres}
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - REDIS_URL=redis://redis:6379/0
+      - DJANGO_ENV=${DJANGO_ENV:-local}
+      - SECRET_KEY=${SECRET_KEY}
     depends_on:
-      - db
-      - redis
-      - web
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+      web:
+        condition: service_started
     restart: unless-stopped
 
   celery_beat:
     build: .
     container_name: dj_template_celery_beat
-    command: sh -c "cd /app/core && celery -A core beat --loglevel=info"
+    command: sh -c "cd /app/core && celery -A core beat --loglevel=${CELERY_LOG_LEVEL:-info}"
     volumes:
       - ./core:/app/core
     env_file:
@@ -91,13 +104,21 @@ services:
       - DATABASE_TYPE=${DATABASE_TYPE:-postgres}
       - DB_HOST=db
       - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-postgres}
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - REDIS_URL=redis://redis:6379/0
+      - DJANGO_ENV=${DJANGO_ENV:-local}
+      - SECRET_KEY=${SECRET_KEY}
     depends_on:
-      - db
-      - redis
-      - web
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+      web:
+        condition: service_started
     restart: unless-stopped
 
 volumes:
