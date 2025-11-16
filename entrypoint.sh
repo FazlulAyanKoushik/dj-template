@@ -30,6 +30,8 @@ python manage.py seed_users || echo "User seeding skipped (user may already exis
 echo "Collecting static files..."
 python manage.py collectstatic --noinput --clear || echo "Static files collection failed, continuing..."
 
+echo "Django setup completed. Starting application server..."
+
 # Run the main container command (e.g., gunicorn / daphne / runserver)
 exec "$@"
 
