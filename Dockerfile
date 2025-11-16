@@ -40,6 +40,6 @@ EXPOSE 8000
 # Set entrypoint
 ENTRYPOINT ["./entrypoint.sh"]
 
-# Default command  [--workers 4 --timeout 120 --graceful-timeout 30 --keep-alive 5]
-CMD ["sh", "-c", "cd /app/core && gunicorn core.wsgi:application --bind 0.0.0.0:8000"]
+# Default command
+CMD ["sh", "-c", "cd /app/core && gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 120 --graceful-timeout 30 --keep-alive 5 --max-requests 1000 --max-requests-jitter 50"]
 

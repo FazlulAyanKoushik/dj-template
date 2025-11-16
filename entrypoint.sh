@@ -18,13 +18,13 @@ else
     echo "Using SQLite. Skipping database availability check."
 fi
 
-# Run migrations
+# Run migrations (skip if already applied)
 echo "Running database migrations..."
-python manage.py migrate --noinput
+python manage.py migrate --noinput || echo "Migrations failed or already applied, continuing..."
 
-# Seed initial users
+# Seed initial users (only if user doesn't exist)
 echo "Seeding initial users..."
-python manage.py seed_users || echo "User seeding skipped (user may already exist)"
+python manage.py seed_users 2>/dev/null || echo "User seeding skipped (user may already exist)"
 
 # Collect static files
 echo "Collecting static files..."

@@ -32,7 +32,7 @@ services:
   web:
     build: .
     container_name: dj_template_web
-    command: sh -c "cd /app/core && gunicorn core.wsgi:application --bind 0.0.0.0:8000"
+    command: sh -c "cd /app/core && gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers ${GUNICORN_WORKERS:-4} --timeout 120 --graceful-timeout 30 --keep-alive 5 --max-requests 1000 --max-requests-jitter 50"
     volumes:
       - ./core:/app/core
       - ./entrypoint.sh:/app/entrypoint.sh
