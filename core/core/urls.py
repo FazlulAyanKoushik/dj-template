@@ -25,7 +25,7 @@ schema_view = get_schema_view(
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/accounts/', include('accounts.urls')),
+    path('api/auth/', include('accounts.urls')),
 
     # Swagger/OpenAPI documentation
     path('swagger<format>/', schema_view.without_ui(cache_timeout=0), name='schema-json'),
