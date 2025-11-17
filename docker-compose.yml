@@ -1,24 +1,24 @@
 services:
-  db:
-    image: postgres:15-alpine
-    container_name: dj_template_db
-    environment:
-      POSTGRES_DB: ${DB_NAME:-postgres}
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "${DB_PORT:-5432}:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+#  db:
+#    image: postgres:15-alpine
+#    container_name: dj_template_db
+#    environment:
+#      POSTGRES_DB: ${DB_NAME:-postgres}
+#      POSTGRES_USER: ${DB_USER:-postgres}
+#      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+#    volumes:
+#      - postgres_data:/var/lib/postgresql/data
+#    ports:
+#      - "${DB_PORT:-5432}:5432"
+#    healthcheck:
+#      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+#      interval: 10s
+#      timeout: 5s
+#      retries: 5
 
   redis:
     image: redis:7-alpine
-    container_name: dj_template_redis
+    container_name: dj_redis
     ports:
       - "6379:6379"
     volumes:
@@ -28,11 +28,22 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - project_network
 
   web:
     build: .
     container_name: dj_template_web
-    command: sh -c "cd /app/core && gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers ${GUNICORN_WORKERS:-4} --timeout 120 --graceful-timeout 30 --keep-alive 5 --max-requests 1000 --max-requests-jitter 50"
+    # In local/dev, use Django's runserver for auto-reload; otherwise use Gunicorn
+    command: >-
+      sh -c "cd /app/core &&
+      if [ \"$DJANGO_ENV\" = \"local\" ]; then
+        echo 'Starting Django runserver with auto-reload...';
+        python manage.py runserver 0.0.0.0:8000;
+      else
+        echo 'Starting Gunicorn (production mode)...';
+        gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers ${GUNICORN_WORKERS:-4} --timeout 120 --graceful-timeout 30 --keep-alive 5 --max-requests 1000 --max-requests-jitter 50;
+      fi"
     volumes:
       - ./core:/app/core
       - ./entrypoint.sh:/app/entrypoint.sh
@@ -43,18 +54,16 @@ services:
     env_file:
       - .env
     environment:
-      # Override only Docker-specific service names
-      - DB_HOST=db
-      - DB_PORT=5432
+      # Override Redis URL for Docker
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - REDIS_URL=redis://redis:6379/0
     depends_on:
-      db:
-        condition: service_healthy
       redis:
         condition: service_healthy
     restart: unless-stopped
+    networks:
+      - project_network
 
   celery_worker:
     build: .
@@ -65,20 +74,18 @@ services:
     env_file:
       - .env
     environment:
-      # Override only Docker-specific service names
-      - DB_HOST=db
-      - DB_PORT=5432
+      # Override Redis URL for Docker
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - REDIS_URL=redis://redis:6379/0
     depends_on:
       redis:
         condition: service_healthy
-      db:
-        condition: service_healthy
       web:
         condition: service_started
     restart: unless-stopped
+    networks:
+      - project_network
 
   celery_beat:
     build: .
@@ -86,27 +93,31 @@ services:
     command: sh -c "cd /app/core && celery -A core beat --loglevel=${CELERY_LOG_LEVEL:-info}"
     volumes:
       - ./core:/app/core
+      - celerybeat_schedule:/app/celerybeat  # Add persistent volume for beat schedule
     env_file:
       - .env
     environment:
-      # Override only Docker-specific service names
-      - DB_HOST=db
-      - DB_PORT=5432
+      # Override Redis URL for Docker
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - REDIS_URL=redis://redis:6379/0
     depends_on:
       redis:
         condition: service_healthy
-      db:
-        condition: service_healthy
       web:
         condition: service_started
     restart: unless-stopped
+    networks:
+      - project_network
 
+networks:
+  project_network:
+    driver: bridge
+
+  # At the bottom of the file, add celerybeat_schedule to volumes:
 volumes:
   postgres_data:
   redis_data:
   static_volume:
   media_volume:
-
+  celerybeat_schedule:  # Add this line

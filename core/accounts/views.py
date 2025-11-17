@@ -20,6 +20,7 @@ class RegisterView(generics.CreateAPIView):
 
     @swagger_auto_schema(
         operation_description="Register a new user",
+        tags=["Auth"],
         responses={
             201: openapi.Response('User created successfully', UserSerializer),
             400: 'Bad Request'
@@ -49,6 +50,7 @@ class LoginView(generics.GenericAPIView):
 
     @swagger_auto_schema(
         operation_description="Login endpoint",
+        tags=["Auth"],
         request_body=LoginSerializer,
         responses={
             200: openapi.Response('Login successful'),
@@ -87,6 +89,7 @@ class LogoutView(generics.GenericAPIView):
 
     @swagger_auto_schema(
         operation_description="Logout endpoint",
+        tags=["Auth"],
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
